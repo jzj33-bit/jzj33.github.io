@@ -23,7 +23,7 @@ h1 {
   max-width: 1000px;
   margin: auto;
   min-height: 100vh;
-  borddr: 2px solid#f7f7f7;
+  border: 2px solid#f7f7f7;
   border-radius: 25px;
   overflow: hidden;
 }
@@ -38,7 +38,7 @@ h1 {
   font-size: 25px;
 }
 #research-interests {
-  text-alighn: left;
+  text-align: left;
   font-size:25px;
   position:relative;
   ;left: 50px;
