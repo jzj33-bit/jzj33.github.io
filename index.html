@@ -69,14 +69,14 @@ var geocoder = L.Control.geocoder({
   defaultMarkGeocode: false,
   geocoder: new L.Control.Geocoder.Nominatim()
 }).on('markgeocode', function(e) {
-var bbox = e.geocode.bbox;
-var poly = L.polygon([
+  var bbox = e.geocode.bbox;
+  var poly = L.polygon([
       bbox.getSouthEast(),
       bbox.getNorthEast(),
       bbox.getNorthWest(),
       bbox.getSouthWest()
-]);
-mymap.fitBounds(poly.getBounds());
+  ]);
+  mymap.fitBounds(poly.getBounds());
 }).addTo(mymap);
 //var marker = L.marker([51.5, -0.09], { color: 'red', fillcolor: '#f03', fillOpacity: 0.5, radius: 500}).addTo(mymap);
 //var circle = L.circle([51.508, -0.11], { color: 'red', fillColor: '#f03',fillOpacity: 0.5, radius: 500}).addTo(mymap);
