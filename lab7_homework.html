@@ -2,80 +2,190 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Lab 7 Homework</title>
+  <title>Iceland Earthquakes</title>
+
+  <!-- Esri ArcGIS API stylesheet -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/dark/main.css">
+
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 2rem;
-      background: #f5f5f5;
+    html, body { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; }
+
+    /* Title bar across the top */
+    #title {
+      position: absolute; top: 0; left: 0; right: 0; height: 60px; z-index: 20;
+      background: #1b3a57; color: #fff; display: flex;
+      justify-content: space-between; align-items: center; padding: 0 20px;
+    }
+    #title h1 { margin: 0; font-size: 1.4rem; }
+
+    /* Map fills everything below the title bar */
+    #viewDiv { position: absolute; top: 60px; bottom: 0; left: 0; right: 0; }
+
+    /* Copyright footer: a div that overlaps the bottom of the map.
+       It sits 28px up so Esri's attribution text stays visible. */
+    #footer {
+      position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+      z-index: 10; padding: 6px 16px; background: rgba(0, 0, 0, 0.65);
+      color: #eee; font-size: 0.75rem; border-radius: 4px; pointer-events: none;
     }
 
-    h1 { margin-top: 0; }
-
-    /* Dropdown container */
-    .dropdown {
-      position: relative;
-      display: inline-block;
-    }
-
-    /* Button that opens the menu */
-    .dropbtn {
-      background: #2c6e9b;
-      color: white;
-      padding: 12px 20px;
-      font-size: 16px;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .dropbtn:hover { background: #245a80; }
-
-    /* Hidden menu */
+    #queryPanel { width: 220px; padding: 12px; background: #222; color: #fff; border-radius: 4px; }
+    #queryPanel label { display: block; font-weight: bold; margin-top: 6px; }
+    #queryPanel select, #queryPanel button { width: 100%; padding: 6px; margin: 4px 0 8px; }
+    .dropdown { position: relative; display: inline-block; }
+    .dropbtn { background: #2c6e9b; color: #fff; padding: 10px 16px; border: none; border-radius: 4px; cursor: pointer; }
     .dropdown-content {
-      display: none;
-      position: absolute;
-      background: white;
-      min-width: 220px;
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-      border-radius: 4px;
-      z-index: 1000;
+      display: none; position: absolute; right: 0; background: #fff;
+      min-width: 200px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); z-index: 30;
     }
-
-    .dropdown-content a {
-      display: block;
-      color: #222;
-      padding: 12px 16px;
-      text-decoration: none;
-    }
-
     .dropdown-content a:hover { background: #e8f1f7; }
-
-    /* Show menu on hover or when toggled open (keyboard/touch friendly) */
-    .dropdown:hover .dropdown-content,
-    .dropdown.open .dropdown-content {
-      display: block;
-    }
+    .dropdown:hover .dropdown-content { display: block; }
   </style>
 </head>
+
 <body>
 
-  <h1>Lab 7 Homework</h1>
-  <p>Select a map from the menu below. Each link opens in a new tab.</p>
+  <!-- Title bar with the navigation dropdown -->
+  <div id="title">
+    <h1>Iceland Earthquakes Explorer</h1>
 
-  <div class="dropdown" id="mapDropdown">
-    <button class="dropbtn" type="button" aria-haspopup="true">Choose a Map &#9662;</button>
-
-    <div class="dropdown-content">
-      <a href="tile_layer.html" target="_blank" rel="noopener noreferrer">Tile Layer</a>
-      <a href="on_event.html" target="_blank" rel="noopener noreferrer">on event</a>
-      <a href="basemap_gallery.html" target="_blank" rel="noopener noreferrer">basemap gallery</a>
-      <a href="query_task.html" target="_blank" rel="noopener noreferrer">query task</a>
-      <a href="dynamic_layers.html" target="_blank" rel="noopener noreferrer">dynamic layers</a>
-      <a href="Simple_mapping.html" target="_blank" rel="noopener noreferrer">simple mapping</a>
+    <div class="dropdown">
+      <button class="dropbtn">Lab Maps &#9662;</button>
+      <div class="dropdown-content">
+        <a href="tile_layer.html" target="_blank">Tile Layer</a>
+        <a href="basemap_gallery.html" target="_blank">basemap gallery</a>
+        <a href="dynamic_layers.html" target="_blank">dynamic layers</a>
+        <a href="on_event.html" target="_blank">on event</a>
+        <a href="query_task.html" target="_blank">query task</a>
+        <a href="Simple_mapping.html" target="_blank">Simple mapping</a>
+      </div>
     </div>
   </div>
+
+  <div id="viewDiv"></div>
+
+   <!-- Query panel with two dropdown menus  -->
+  <div id="queryPanel">
+    <label for="magSelect">Minimum magnitude</label>
+    <select id="magSelect">
+      <option value="0">All earthquakes</option>
+      <option value="3">3.0 and above</option>
+      <option value="4">4.0 and above</option>
+      <option value="5">5.0 and above</option>
+    </select>
+
+    <label for="depthSelect">Depth</label>
+    <select id="depthSelect">
+      <option value="ALL">Any depth</option>
+      <option value="Depth < 5">Shallow (under 5 km)</option>
+      <option value="Depth >= 5 AND Depth < 15">Medium (5 to 15 km)</option>
+      <option value="Depth >= 15">Deep (15 km or more)</option>
+    </select>
+
+    <button id="searchBtn">Search</button>
+    <button id="resetBtn">Reset</button>
+    <div id="resultMsg"></div>
+  </div>
+
+  <!-- Copyright footer overlapping the bottom of the map -->
+  <div id="footer">&copy; 2026 Kenneth Vanegas &ndash; Lab 7 Homework. Earthquake data: Esri ArcGIS Online (Iceland_Earthquakes). Basemap: Esri, HERE, Garmin.</div>
+
+  <script src="https://js.arcgis.com/4.30/"></script>
+
+  <script>
+
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/TileLayer",
+      "esri/layers/FeatureLayer"
+    ], function (Map, MapView, TileLayer, FeatureLayer) {
+
+
+      var baseLayer = new TileLayer({
+        url: "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer"
+      });
+
+      // Earthquake points (layer 0 of the service)
+      var quakeLayer = new FeatureLayer({
+        url: "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/ArcGIS/rest/services/Iceland_Earthquakes/FeatureServer/0",
+        outFields: ["*"],
+
+
+        popupTemplate: {
+          title: "Magnitude {Magnitude}",
+          content: "Date: {DateTime}<br>Depth: {Depth} km<br>Magnitude type: {MagType}"
+        },
+
+        // Orange  circles; bigger circle = bigger earthquake
+        renderer: {
+          type: "simple",
+          symbol: {
+            type: "simple-marker",
+            color: [255, 120, 40, 0.5],
+            size: 6,
+            outline: { color: [255, 200, 150, 0.6], width: 0.5 }
+          },
+          visualVariables: [{
+            type: "size",
+            field: "Magnitude",
+            minDataValue: 2,
+            maxDataValue: 7,
+            minSize: 4,
+            maxSize: 28
+          }]
+        }
+      });
+
+      var map = new Map({ layers: [baseLayer, quakeLayer] });
+
+      // Start centered on Iceland at a scale that shows all of the data
+      var view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-19, 65],
+        zoom: 5
+      });
+
+      view.ui.add(document.getElementById("queryPanel"), "top-right");
+
+
+      document.getElementById("searchBtn").addEventListener("click", function () {
+
+        // Build a SQL WHERE clause from the two dropdowns
+        var minMag = document.getElementById("magSelect").value;
+        var depthClause = document.getElementById("depthSelect").value;
+
+        var where = "Magnitude >= " + minMag;
+        if (depthClause !== "ALL") {
+          where = where + " AND " + depthClause;
+        }
+
+        // Show only the matching earthquakes
+        quakeLayer.definitionExpression = where;
+
+        quakeLayer.queryExtent({ where: where }).then(function (result) {
+          if (result.count === 0) {
+            document.getElementById("resultMsg").textContent = "No earthquakes match.";
+            return;
+          }
+          document.getElementById("resultMsg").textContent = result.count + " earthquakes found.";.
+
+          var target = (result.count === 1)
+            ? { center: result.extent.center, scale: 500000 }
+            : result.extent.expand(1.4);
+          view.goTo(target, { duration: 2500, easing: "ease-in-out" });
+        });
+      });
+      document.getElementById("resetBtn").addEventListener("click", function () {
+        document.getElementById("magSelect").value = "0";
+        document.getElementById("depthSelect").value = "ALL";
+        document.getElementById("resultMsg").textContent = "";
+        quakeLayer.definitionExpression = null;
+        view.goTo({ center: [-19, 65], zoom: 5 }, { duration: 2500 });
+      });
+    });
+  </script>
 
 </body>
 </html>
