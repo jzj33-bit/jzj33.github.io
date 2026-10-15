@@ -21,8 +21,6 @@
     /* Map fills everything below the title bar */
     #viewDiv { position: absolute; top: 60px; bottom: 0; left: 0; right: 0; }
 
-    /* Copyright footer: a div that overlaps the bottom of the map.
-       It sits 28px up so Esri's attribution text stays visible. */
     #footer {
       position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
       z-index: 10; padding: 6px 16px; background: rgba(0, 0, 0, 0.65);
@@ -32,12 +30,15 @@
     #queryPanel { width: 220px; padding: 12px; background: #222; color: #fff; border-radius: 4px; }
     #queryPanel label { display: block; font-weight: bold; margin-top: 6px; }
     #queryPanel select, #queryPanel button { width: 100%; padding: 6px; margin: 4px 0 8px; }
+    #resultMsg { font-style: italic; color: #ccc; }
+
     .dropdown { position: relative; display: inline-block; }
     .dropbtn { background: #2c6e9b; color: #fff; padding: 10px 16px; border: none; border-radius: 4px; cursor: pointer; }
     .dropdown-content {
       display: none; position: absolute; right: 0; background: #fff;
       min-width: 200px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); z-index: 30;
     }
+    .dropdown-content a { display: block; color: #222; padding: 10px 14px; text-decoration: none; }
     .dropdown-content a:hover { background: #e8f1f7; }
     .dropdown:hover .dropdown-content { display: block; }
   </style>
@@ -52,6 +53,7 @@
     <div class="dropdown">
       <button class="dropbtn">Lab Maps &#9662;</button>
       <div class="dropdown-content">
+        <!-- target="_blank" opens each link in a new tab -->
         <a href="tile_layer.html" target="_blank">Tile Layer</a>
         <a href="basemap_gallery.html" target="_blank">basemap gallery</a>
         <a href="dynamic_layers.html" target="_blank">dynamic layers</a>
@@ -62,9 +64,10 @@
     </div>
   </div>
 
+  <!-- The map is drawn in this div -->
   <div id="viewDiv"></div>
 
-   <!-- Query panel with two dropdown menus  -->
+  <!-- Query panel with two dropdown menus -->
   <div id="queryPanel">
     <label for="magSelect">Minimum magnitude</label>
     <select id="magSelect">
@@ -76,6 +79,7 @@
 
     <label for="depthSelect">Depth</label>
     <select id="depthSelect">
+      <!-- Each value is a piece of a SQL WHERE clause (used in the script below) -->
       <option value="ALL">Any depth</option>
       <option value="Depth < 5">Shallow (under 5 km)</option>
       <option value="Depth >= 5 AND Depth < 15">Medium (5 to 15 km)</option>
@@ -90,10 +94,11 @@
   <!-- Copyright footer overlapping the bottom of the map -->
   <div id="footer">&copy; 2026 Kenneth Vanegas &ndash; Lab 7 Homework. Earthquake data: Esri ArcGIS Online (Iceland_Earthquakes). Basemap: Esri, HERE, Garmin.</div>
 
+  <!-- Esri ArcGIS API for JavaScript -->
   <script src="https://js.arcgis.com/4.30/"></script>
 
   <script>
-
+    // Load the Esri modules we need
     require([
       "esri/Map",
       "esri/views/MapView",
@@ -101,23 +106,25 @@
       "esri/layers/FeatureLayer"
     ], function (Map, MapView, TileLayer, FeatureLayer) {
 
+      // ---------- 1. LAYERS ----------
 
+      // Tiled dark-gray basemap (this is our TileLayer)
       var baseLayer = new TileLayer({
         url: "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer"
       });
 
-      // Earthquake points (layer 0 of the service)
+      // Earthquake points (layer 0 of the service). Visible as soon as the map loads.
       var quakeLayer = new FeatureLayer({
         url: "https://services.arcgis.com/V6ZHFr6zdgNZuVG0/ArcGIS/rest/services/Iceland_Earthquakes/FeatureServer/0",
         outFields: ["*"],
 
-
+        // Popup shown when a point is clicked. {FieldName} is replaced by the real value.
         popupTemplate: {
           title: "Magnitude {Magnitude}",
           content: "Date: {DateTime}<br>Depth: {Depth} km<br>Magnitude type: {MagType}"
         },
 
-        // Orange  circles; bigger circle = bigger earthquake
+        // Orange circles; bigger circle = bigger earthquake
         renderer: {
           type: "simple",
           symbol: {
@@ -129,13 +136,15 @@
           visualVariables: [{
             type: "size",
             field: "Magnitude",
-            minDataValue: 2,
-            maxDataValue: 7,
-            minSize: 4,
-            maxSize: 28
+            minDataValue: 2,   // smallest quakes
+            maxDataValue: 7,   // largest quakes
+            minSize: 4,        // pixel size for the smallest
+            maxSize: 28        // pixel size for the largest
           }]
         }
       });
+
+      // ---------- 2. MAP AND VIEW ----------
 
       var map = new Map({ layers: [baseLayer, quakeLayer] });
 
@@ -143,12 +152,14 @@
       var view = new MapView({
         container: "viewDiv",
         map: map,
-        center: [-19, 65],
+        center: [-19, 65],   // [longitude, latitude]
         zoom: 5
       });
 
+      // Move the HTML query panel onto the map (top-right corner)
       view.ui.add(document.getElementById("queryPanel"), "top-right");
 
+      // ---------- 3. SEARCH ----------
 
       document.getElementById("searchBtn").addEventListener("click", function () {
 
@@ -156,33 +167,39 @@
         var minMag = document.getElementById("magSelect").value;
         var depthClause = document.getElementById("depthSelect").value;
 
-        var where = "Magnitude >= " + minMag;
+        var where = "Magnitude >= " + minMag;       // always filter by magnitude
         if (depthClause !== "ALL") {
-          where = where + " AND " + depthClause;
+          where = where + " AND " + depthClause;    // add the depth filter if one was chosen
         }
 
         // Show only the matching earthquakes
         quakeLayer.definitionExpression = where;
 
+        // Get the number and bounding box of the matches
         quakeLayer.queryExtent({ where: where }).then(function (result) {
           if (result.count === 0) {
             document.getElementById("resultMsg").textContent = "No earthquakes match.";
             return;
           }
-          document.getElementById("resultMsg").textContent = result.count + " earthquakes found.";.
+          document.getElementById("resultMsg").textContent = result.count + " earthquakes found.";
 
+          // Animated move to the results (2.5 seconds).
+          // One result = zoom to a fixed scale; many = fit them all with 40% padding.
           var target = (result.count === 1)
             ? { center: result.extent.center, scale: 500000 }
             : result.extent.expand(1.4);
           view.goTo(target, { duration: 2500, easing: "ease-in-out" });
         });
       });
+
+      // ---------- 4. RESET ----------
+
       document.getElementById("resetBtn").addEventListener("click", function () {
         document.getElementById("magSelect").value = "0";
         document.getElementById("depthSelect").value = "ALL";
         document.getElementById("resultMsg").textContent = "";
-        quakeLayer.definitionExpression = null;
-        view.goTo({ center: [-19, 65], zoom: 5 }, { duration: 2500 });
+        quakeLayer.definitionExpression = null;   // show every earthquake again
+        view.goTo({ center: [-19, 65], zoom: 5 }, { duration: 2500 });  // fly back to the start
       });
     });
   </script>
